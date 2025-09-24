@@ -1,7 +1,7 @@
 #  import necessary modules
-import os, shutil, time, json
+import os, shutil, time, json, pystray, PIL.Image, filecmp
 from tkinter import (Tk, Label, Button, Frame, Canvas, Scrollbar, messagebox, filedialog, 
-                      Toplevel, Entry, PhotoImage
+                      Toplevel, Entry, PhotoImage, Checkbutton, IntVar
                     )
 
 # name:list_of_extenstions
@@ -12,15 +12,17 @@ configs = {
     "apps" : [".msi", ".exe"],
     "videos" : [".mp4", ".mkv", ".mov", ".avi", "webm", "ts", ".asf", ".wmv"],
     "compressed" : [".zip", ".7z", ".tar", ".wim", "gz"],
-    "documents" : [".docx", ".pptx", ".txt", ".rft", ".chm", ".html", ".htm", ".mhtml", ".pdf"]
+    "documents" : [".docx", ".pptx", ".txt", ".rtf", ".chm", ".html", ".htm", ".mhtml", ".pdf"],
+    "last_folder": "",
+    "start": False
 }
 
 log_file = f"\n{time.strftime('%a %b %d %Y %H:%M:%S')}\n"
-save_folder = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "File Cleaner")
+save_folder = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "CCU Software", "File Cleaner")
 
 # create save folder if not available
 if not os.path.exists(save_folder):
-    os.mkdir(save_folder)
+    os.makedirs(save_folder, exist_ok=True)
 
 # load the config file, if not available create it
 try:
@@ -54,9 +56,11 @@ def move(path, new_path):
     except FileNotFoundError:
         messagebox.showerror("Unable to move file", "File is not found")
         return False
+    except shutil.Error as e:
+        messagebox.showerror("Unable to move file", e)
 
 # function to sort the files according to their configured extensions
-def sort(base_dir):
+def sort(base_dir, can_open):
     global log_file
     for i in os.listdir(base_dir):
         if os.path.isdir(os.path.join(base_dir, i)):
@@ -68,7 +72,8 @@ def sort(base_dir):
                 ext = os.path.splitext(i)[1].lower()
             else:
                 ext = ""
-            for j in configs.values():
+            val = list(configs.values())[:len(configs.values())-2]
+            for j in val:
                 if ext in j:
                     ans = [items for items, values in configs.items() if values == j]
                     if move(os.path.join(base_dir, i), os.path.join(base_dir, ans[0].capitalize())):
@@ -86,17 +91,25 @@ def sort(base_dir):
     #  reset the log file for a new session
     log_file = ""
     #  open explorer if done
-    if messagebox.askyesno("Open Explorer", "Scan is Done\nWould you like to open explorer"):
-        os.startfile(base_dir)
+    if can_open:
+        if messagebox.askyesno("Open Explorer", "Scan is Done\nWould you like to open explorer"):
+            os.startfile(base_dir)
 
 # function to open directory
-def open_dir():
+def open_dir(dir=None, can_open=True):
     home_download = os.path.join(os.path.expanduser("~"), "Downloads")
-    directory = filedialog.askdirectory(initialdir=home_download)
+    directory = ""
+    if dir == None:
+        directory = filedialog.askdirectory(initialdir=home_download)
+    else:
+        directory = dir
+    configs["last_folder"] = directory
+    with open(os.path.join(save_folder, "config.json"), "w") as f:
+        json.dump(configs, f, indent=4)
     # if it is not cancelled create folders and sort files
     if directory != "":
         create_folders(directory)
-        sort(directory)
+        sort(directory, can_open)
 
 # function to add label to the log frame and add test to the session's log file
 def add_lbls(text:str):
@@ -199,12 +212,33 @@ def remove_config():
     top.bind("<KeyPress>", lambda e: confirm() if e.keysym == "Return" else "nothing")
     app.wait_window(top)
 
+def setting():
+    def load():
+        start = True if var.get() == 1 else False
+        configs["start"] = start
+        with open(os.path.join(save_folder, "config.json"), "w") as f:
+            json.dump(configs, f, indent=4)
+    setting_app = Toplevel(app)
+    setting_app.geometry(f"300x100+{app.winfo_x()}+{app.winfo_y()}")
+    setting_app.config(bg="black")
+    setting_app.title("Settings")
+    setting_app.transient(app)
+    var = IntVar(setting_app)
+    Label(setting_app, text="Select favourable options", bg="black", fg="white").pack(pady=20)
+    check1 = Checkbutton(setting_app, text="Run in background when computer starts", onvalue=1,
+                         offvalue=0, variable=var, command=load)
+    if configs["start"]:
+        var.set(1)
+    check1.pack()
+    app.wait_window(setting_app)
+    setting_app.mainloop()
+
 #  main app configuration
 app = Tk()
-app.geometry("520x450+100+100")
+app.geometry("540x450+100+100")
 app.title("File Organizer")
 app.config(bg="darkblue")
-app.iconphoto(True, PhotoImage(file="file_clean.png"))
+app.iconphoto(True, PhotoImage(file=os.path.join(os.path.split(__file__)[0], "file_clean.png")))
 
 #  Create a top frame for the buttons and label
 top_frame = Frame(app, bg="darkblue")
@@ -227,6 +261,9 @@ btn3.pack(side="left", padx=5, ipadx=3, ipady=3)
 btn4 = Button(top_frame, text="Remove Config", fg="white", bg="red", font="Consolas 11", command=remove_config)
 btn4.pack(side="left", padx=5, ipadx=3, ipady=3)
 
+btn5 = Button(top_frame, text="Settings", fg="white", bg="black", font="Consolas 11", command=setting)
+btn5.pack(side="left", padx=5, ipadx=3, ipady=3)
+
 #  Log label
 lbl2 = Label(app, text="Logs", fg="white", bg="darkblue", font="Consolas 13 bold")
 lbl2.pack(side="top", padx=10, pady=13)
@@ -246,6 +283,51 @@ canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
 
 # update frame when configured
 scrollable_frame.bind("<Configure>", update_scroll_region)
+ 
+# Ensure startup configuration is enabled
+if configs["start"]:
+    env_path = os.path.join(os.environ["USERPROFILE"], "Documents", "Finished Projects",
+                             "Python", "File-Cleaner", ".virtual", "Scripts", "activate")
+    
+    # Content for the batch file
+    bat_content = f'@echo off\ncall "{env_path}"\npythonw "{__file__}"'
 
-# mainloop
+    # Create the batch file in the current directory
+    with open("run.bat", "w") as bat_file:
+        bat_file.write(bat_content)
+
+    # Define the Startup folder path
+    startup_path = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Microsoft", 
+                                "Windows", "Start Menu", "Programs", "Startup", "run.bat")
+    
+    # If the batch file does not exist or the content differs, move the new batch file to the startup folder
+    if not os.path.exists(startup_path) or not filecmp.cmp("run.bat", startup_path):
+        shutil.move("run.bat", startup_path)
+        print("Batch file has been placed in the Startup folder.")
+    else:
+        print("The batch file already exists with the same content.")
+
+def background():
+    def open_app(icon, query):
+        global re_open
+        app.after(0, app.deiconify)
+        icon.stop()
+        re_open = True
+
+    app.withdraw()
+    icon = pystray.Icon(name="Organize files in the shadows", icon=PIL.Image.open("file_clean.png"), 
+                 title="File Cleaner", menu = pystray.Menu(pystray.MenuItem("Open", open_app))
+            )
+    icon.run()
+    open_dir(os.path.join(os.path.expanduser("~"), "Downloads"), False)
+    if not re_open:
+        app.after(500, background)
+
+def back():
+    if messagebox.askyesno("Confirm", "Do you want to run in background"):
+        background()
+    else:
+        app.destroy()
+
+app.protocol("WM_DELETE_WINDOW", back)
 app.mainloop()
