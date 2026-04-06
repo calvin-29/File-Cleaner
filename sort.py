@@ -3,7 +3,7 @@ import shutil
 from tkinter import messagebox, Label
 import time
 
-log_file = f"\n{time.strftime('%a %b %d %Y %H:%M:%S')}\n"
+log_file = ""
 
 # function to add label to the log frame and add test to the session's log file
 def add_lbls(text:str, scrollable_frame):
@@ -40,15 +40,20 @@ def create_folders(base_dir, configs, scrollable_frame):
 # function to sort the files according to their configured extensions
 def sorting(app, base_dir, can_open, configs, save_folder, scrollable_frame):
     global log_file
+    log_file = f"\n{time.strftime('%a %b %d %Y %H:%M:%S')}\n"
+
     create_folders(base_dir, configs, scrollable_frame)
     files = os.listdir(base_dir)
     for i in files:
         if os.path.isdir(os.path.join(base_dir, i)):
             if i not in configs["folders"]:
                 if move(os.path.join(base_dir, i), os.path.join(base_dir, "Folders"), app):
-                    print(i)
                     add_lbls(f"Moved {i} to Folders", scrollable_frame)
+                else:
+                    continue
         else:
+            if not is_safe(os.path.join(base_dir, i)):
+                continue
             if "." in i:
                 ext = os.path.splitext(i)[1].lower()
             else:
@@ -62,6 +67,8 @@ def sorting(app, base_dir, can_open, configs, save_folder, scrollable_frame):
                     ans = [items for items, values in configs.items() if values == j]
                     if move(os.path.join(base_dir, i), os.path.join(base_dir, ans[0].capitalize()), app):
                         add_lbls(f"Moved {i} to {ans[0]}", scrollable_frame)
+                    else:
+                        continue
     """
         After the first loop, the unknown files will remain, now the loop will run to put them in Others
     """
@@ -69,6 +76,8 @@ def sorting(app, base_dir, can_open, configs, save_folder, scrollable_frame):
         if os.path.isfile(os.path.join(base_dir, i)):
             if move(os.path.join(base_dir, i), os.path.join(base_dir, "Others"), app):
                 add_lbls(f"Moved {i} to Others", scrollable_frame)
+            else:
+                continue
     #  add log to the log file
     with open(os.path.join(save_folder, "log.txt"), "a") as f:
         f.write(log_file)
@@ -78,3 +87,25 @@ def sorting(app, base_dir, can_open, configs, save_folder, scrollable_frame):
     if can_open:
         if messagebox.askyesno("Open Explorer", "Scan is Done\nWould you like to open explorer", parent=app):
             os.startfile(base_dir)
+
+def is_safe(path):
+    if os.path.exists(path):
+        name = path.lower()
+
+        # 1. Extension check
+        if name.endswith((".crdownload", ".part", ".tmp")):
+            return False
+
+        # 2. Open check
+        try:
+            with open(path, "rb"):
+                pass
+        except:
+            return False
+
+        # 3. Quick size stability check
+        size1 = os.path.getsize(path)
+        time.sleep(1)
+        size2 = os.path.getsize(path)
+
+        return size1 == size2

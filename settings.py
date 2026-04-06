@@ -2,6 +2,7 @@ from tkinter import (Toplevel, Entry, Checkbutton,
                      IntVar, Label, Button, messagebox)
 import os
 import json
+from startup import setup_startup
 
 # function to create the dialog for configuration settings
 def config(app, save_folder, configs):
@@ -87,6 +88,7 @@ def setting(app, save_folder, configs):
         configs["start"] = start
         with open(os.path.join(save_folder, "config.json"), "w") as f:
             json.dump(configs, f, indent=4)
+        setup_startup(configs)
     setting_app = Toplevel(app)
     setting_app.geometry(f"300x100+{app.winfo_x()}+{app.winfo_y()}")
     setting_app.config(bg="black")

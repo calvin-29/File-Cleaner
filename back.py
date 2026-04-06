@@ -1,6 +1,7 @@
 import pystray
 import PIL.Image
 import os
+import sys
 from sort import sorting
 from threading import Thread
 
@@ -15,46 +16,43 @@ def get_folder_size(path):
     return total
 
 tray_running = False
+app_open = False
 last_size = None
 
 def background(app, configs, scrollable_frame, save_folder):
-    global tray_running, last_size
+    global tray_running, last_size, app_open
 
     def open_app(icon, q):
         global tray_running
 
         if q.text == "Open":
             app.after(0, app.deiconify)
+            app_open = True
 
         elif q.text == "Close":
-            app.destroy()
             icon.stop()
-
-            tray_running = False
-
+            app.destroy()
+    
     app.withdraw()
 
     if not tray_running:
         icon = pystray.Icon(
             name="Organize files in the shadows",
-            icon=PIL.Image.open("file_clean.png"),
+            icon=PIL.Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "file_clean.png")),
             title="File Cleaner",
             menu=pystray.Menu(
                 pystray.MenuItem("Open", open_app),
                 pystray.MenuItem("Close", open_app)
             )
         )
-        Thread( target=icon.run, daemon=True).start()
+        Thread(target=icon.run, daemon=True).start()
         tray_running = True
-
+    
     home_download = os.path.join(os.path.expanduser("~"), "Downloads")
     dirr = configs["last_folder"] if configs["last_folder"] else home_download
     
-    
-    print(last_size == get_folder_size(dirr))
-    print(last_size, get_folder_size(dirr))
     if last_size != get_folder_size(dirr):
         sorting(app, dirr, False, configs, save_folder, scrollable_frame)
         last_size = get_folder_size(dirr)
-    app.after(100000, lambda: background(app, configs, scrollable_frame, save_folder))
-
+    if not app_open:
+        app.after(100000, lambda: background(app, configs, scrollable_frame, save_folder))

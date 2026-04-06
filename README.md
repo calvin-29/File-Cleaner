@@ -9,12 +9,14 @@
 - **os** — file path handling
 - **shutil** — for file movement
 - **json** — for saving configurations in a file
-- **filecmp** — for comparing bat file for startup 
+- **winreg** — for startup configuration
+- **pystray** — for system tray in background
 
 ## ✨ Features
-- Custom configuration options
-- App Startup 
-- Background Sorting
+- ✨ Custom file extension configuration options
+- 🚀 App Startup 
+- 🥷 Background Sorting
+-  Startup function
 
 ## 🚀 Installation
 ```bash

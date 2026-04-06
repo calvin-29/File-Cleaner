@@ -1,15 +1,14 @@
 #  import necessary modules
 import os
-import shutil
 import json 
-import filecmp
+import sys
 from tkinter import (Tk, Label, Button, Frame, Canvas,
                       Scrollbar, messagebox, filedialog, PhotoImage
                     )
 from sort import sorting, create_folders
 from settings import config, remove_config, setting
 from back import background
-import sys
+from startup import setup_startup
 
 # name:list_of_extenstions
 configs = {
@@ -50,11 +49,11 @@ def open_dir(dir=None, can_open=True):
         directory = filedialog.askdirectory(initialdir=home_download)
     else:
         directory = dir
-    configs["last_folder"] = directory
-    with open(os.path.join(save_folder, "config.json"), "w") as f:
-        json.dump(configs, f, indent=4)
     # if it is not cancelled create folders and sort files
     if directory != "":
+        configs["last_folder"] = directory
+        with open(os.path.join(save_folder, "config.json"), "w") as f:
+            json.dump(configs, f, indent=4)
         create_folders(directory, configs, scrollable_frame)
         sorting(app, directory, can_open, configs, save_folder, scrollable_frame)
 
@@ -118,27 +117,8 @@ canvas.create_window((0, 0), window=scrollable_frame, anchor="center")
 # update frame when configured
 scrollable_frame.bind("<Configure>", update_scroll_region)
  
-# Ensure startup configuration is enabled
-if configs["start"]:
-    # Content for the batch file
-    if hasattr(sys, "_MEIPASS"):
-        bat_content = f"pythonw.exe '{__file__}'"
-
-    # Create the batch file in the current directory
-    with open("run.bat", "w") as bat_file:
-        bat_file.write(bat_content)
-
-    # Define the Startup folder path
-    startup_path = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Microsoft", 
-                                "Windows", "Start Menu", "Programs", "Startup", "run.bat")
-    
-    # If the batch file does not exist or the content differs, move the new batch file to the startup folder
-    if not os.path.exists(startup_path) or not filecmp.cmp("run.bat", startup_path):
-        shutil.move("run.bat", startup_path)
-        print("Batch file has been placed in the Startup folder.")
-    else:
-        os.remove("run.bat")
-        print("The batch file already exists with the same content.")
+# Check startup configuration
+setup_startup(configs)
 
 def back():
     if messagebox.askyesno("Confirm", "Do you want to run in background", parent=app):
@@ -146,5 +126,8 @@ def back():
     else:
         app.destroy()
 
-app.protocol("WM_DELETE_WINDOW", back)
+if len(sys.argv) == 2 and sys.argv[1] == "-background":
+    background(app, configs, scrollable_frame, save_folder)
+else:
+    app.protocol("WM_DELETE_WINDOW", back)
 app.mainloop()
