@@ -11,16 +11,17 @@
 - **json** — for saving configurations in a file
 - **winreg** — for startup configuration
 - **pystray** — for system tray in background
+- **sys** — for exe and py file path handling
 
 ## ✨ Features
 - ✨ Custom file extension configuration options
-- 🚀 App Startup 
+- 🚀 Startup App 
 - 🥷 Background Sorting
 -  Startup function
 
 ## 🚀 Installation
 ```bash
-pip install pystray, tkinter
+pip install pystray pillow
 python main.py
 ```
 

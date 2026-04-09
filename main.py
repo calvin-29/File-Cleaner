@@ -2,11 +2,11 @@
 import os
 import json 
 import sys
-from tkinter import (Tk, Label, Button, Frame, Canvas,
+from tkinter import (Tk, Label, Button, Frame, Canvas, Menu,
                       Scrollbar, messagebox, filedialog, PhotoImage
                     )
 from sort import sorting, create_folders
-from settings import config, remove_config, setting
+from settings import see_config, setting
 from back import background
 from startup import setup_startup
 
@@ -16,8 +16,8 @@ configs = {
     "images" : [".jpg", ".png", ".gif", ".webp", ".jfif"],
     "audios" : [".mp3", ".flac", ".ogg", ".wav"],
     "apps" : [".msi", ".exe"],
-    "videos" : [".mp4", ".mkv", ".mov", ".avi", "webm", "ts", ".asf", ".wmv"],
-    "compressed" : [".zip", ".7z", ".tar", ".wim", "gz"],
+    "videos" : [".mp4", ".mkv", ".mov", ".avi", ".webm", ".ts", ".asf", ".wmv"],
+    "compressed" : [".zip", ".7z", ".tar", ".wim", ".gz"],
     "documents" : [".docx", ".pptx", ".txt", ".rtf", ".chm", ".html", ".htm", ".mhtml", ".pdf"],
     "last_folder": "",
     "start": False
@@ -71,39 +71,35 @@ app = Tk()
 app.geometry("540x450+100+100")
 app.title("File Organizer")
 app.config(bg="darkblue")
-app.iconphoto(True, PhotoImage(file=os.path.join(os.path.split(__file__)[0], "file_clean.png")))
 
-#  Create a top frame for the buttons and label
-top_frame = Frame(app, bg="darkblue")
-top_frame.pack(side="top", fill="x")
+path = os.path.dirname(sys.executable) if hasattr(sys, "frozen") else os.path.dirname(os.path.abspath(__file__))
+app.iconphoto(True, PhotoImage(file=os.path.join(path, "file_clean.png")))
+
+menu = Menu(app)
+
+comm = Menu(tearoff=0)
+comm.add_command(label="Open Folder", command=open_dir)
+comm.add_command(label="Show configs", command=lambda: see_config(app, save_folder, configs))
+comm.add_command(label="Settings", command=lambda: setting(app, save_folder, configs))
+
+menu.add_cascade(label="Commands", menu=comm)
+
+app.config(menu=menu)
 
 #  Header label
-lbl = Label(top_frame, text="File Organizer", fg="white", bg="darkblue", font="Consolas 13 bold")
-lbl.pack(side="top", pady=30)
+lbl = Label(app, text="File Organizer", fg="white", bg="black", font="Consolas 16 bold")
+lbl.pack(side="top", pady=30, ipadx=10, ipady=10)
 
-#  Buttons inside top_frame
-btn = Button(top_frame, text="Open Directory", fg="white", bg="black", font="Consolas 11", command=open_dir)
-btn.pack(side="left", padx=5, ipadx=3, ipady=3)
+#btn frame for the clear btn
+btn_frame = Frame(app, bg="darkblue")
+btn_frame.pack(side="top", fill="x")
 
-btn2 = Button(top_frame, text="Clear", fg="white", bg="red", font="Consolas 11", command=clear)
-btn2.pack(side="left", padx=5, ipadx=3, ipady=3)
-
-btn3 = Button(top_frame, text="Add Config", fg="white", bg="green", font="Consolas 11", command=lambda: config(app, save_folder, configs))
-btn3.pack(side="left", padx=5, ipadx=3, ipady=3)
-
-btn4 = Button(top_frame, text="Remove Config", fg="white", bg="red", font="Consolas 11", command=lambda: remove_config(app, save_folder, configs))
-btn4.pack(side="left", padx=5, ipadx=3, ipady=3)
-
-btn5 = Button(top_frame, text="Settings", fg="white", bg="black", font="Consolas 11", command=lambda: setting(app, save_folder, configs))
-btn5.pack(side="left", padx=5, ipadx=3, ipady=3)
-
-#  Log label
-lbl2 = Label(app, text="Logs", fg="white", bg="darkblue", font="Consolas 13 bold")
-lbl2.pack(side="top", padx=10, pady=13)
+btn2 = Button(btn_frame, text="❌", fg="white", bg="red", font="Consolas 6", command=clear)
+btn2.pack(side="right", padx=5, ipadx=3, ipady=3)
 
 #  Now add the canvas below everything
 canvas = Canvas(app)
-canvas.pack(side="top", fill="both", expand=True, padx=10, pady=5)
+canvas.pack(side="left", fill="both", expand=True, padx=10, pady=5)
 
 #  scrollbar to scroll through events
 scrollbar = Scrollbar(canvas, orient="vertical", command=canvas.yview)
@@ -116,17 +112,19 @@ canvas.create_window((0, 0), window=scrollable_frame, anchor="center")
 
 # update frame when configured
 scrollable_frame.bind("<Configure>", update_scroll_region)
- 
+
 # Check startup configuration
 setup_startup(configs)
 
 def back():
     if messagebox.askyesno("Confirm", "Do you want to run in background", parent=app):
+        app.withdraw()
         background(app, configs, scrollable_frame, save_folder)
     else:
         app.destroy()
 
 if len(sys.argv) == 2 and sys.argv[1] == "-background":
+    app.withdraw()
     background(app, configs, scrollable_frame, save_folder)
 else:
     app.protocol("WM_DELETE_WINDOW", back)

@@ -54,10 +54,7 @@ def sorting(app, base_dir, can_open, configs, save_folder, scrollable_frame):
         else:
             if not is_safe(os.path.join(base_dir, i)):
                 continue
-            if "." in i:
-                ext = os.path.splitext(i)[1].lower()
-            else:
-                ext = ""
+            ext = os.path.splitext(i)[1].lower() if "." in i  else " "
             val = {
                 k: v for k, v in configs.items()
                 if k not in ["folders", "last_folder", "start"]
@@ -73,14 +70,33 @@ def sorting(app, base_dir, can_open, configs, save_folder, scrollable_frame):
         After the first loop, the unknown files will remain, now the loop will run to put them in Others
     """
     for i in os.listdir(base_dir):
-        if os.path.isfile(os.path.join(base_dir, i)):
-            if move(os.path.join(base_dir, i), os.path.join(base_dir, "Others"), app):
-                add_lbls(f"Moved {i} to Others", scrollable_frame)
-            else:
+        path = os.path.join(base_dir, i)
+        if os.path.isfile(path):
+            if not is_safe(path):
                 continue
-    #  add log to the log file
-    with open(os.path.join(save_folder, "log.txt"), "a") as f:
-        f.write(log_file)
+            ext = os.path.splitext(i)[1].lower() if "." in i  else " "
+            val = {
+                k: v for k, v in configs.items()
+                if k not in ["folders", "last_folder", "start"]
+            }
+            moved = False
+            for j in val.values():
+                if ext in j:
+                    # move to category
+                    moved = True
+                    break
+            if not moved:
+                if move(os.path.join(base_dir, i), os.path.join(base_dir, "Others"), app):
+                    add_lbls(f"Moved {i} to Others", scrollable_frame)
+                else:
+                    continue
+    #  add log to the log file and prevent duplicate dates
+    path = os.path.join(save_folder, "log.txt")
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            if log_file not in f.readlines():
+                with open(path, "a+") as f:
+                    f.write(log_file)
     #  reset the log file for a new session
     log_file = ""
     #  open explorer if done
@@ -102,10 +118,3 @@ def is_safe(path):
                 pass
         except:
             return False
-
-        # 3. Quick size stability check
-        size1 = os.path.getsize(path)
-        time.sleep(1)
-        size2 = os.path.getsize(path)
-
-        return size1 == size2
