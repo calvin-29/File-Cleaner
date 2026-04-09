@@ -2,6 +2,7 @@ import os
 import shutil
 from tkinter import messagebox, Label
 import time
+import filecmp
 
 log_file = ""
 
@@ -23,8 +24,31 @@ def move(path, new_path, app):
         messagebox.showerror("Unable to move file", "File is not found", parent=app)
         return False
     except shutil.Error as e:
-        messagebox.showerror("Unable to move file", e, parent=app)
-        return False
+        if "already exists" not in str(e):
+            messagebox.showerror("Unable to move file", str(e), parent=app)
+            return False
+        cp_path = os.path.join(new_path, os.path.split(path)[1])
+        if os.path.getsize(cp_path) == 0:
+            os.remove(cp_path)
+            return move(path, new_path, app)
+        if os.path.getsize(path) == 0: 
+            os.remove(path)
+            return True
+        if not filecmp.cmp(cp_path, path):
+            file, ext = os.path.splitext(path)
+            num = 1
+            while True:
+                ch_name = f"{os.path.basename(file)}({num}){ext}"
+                ch_path = os.path.join(os.path.dirname(file), ch_name)
+                if os.path.exists(os.path.join(new_path, ch_name)):
+                    num += 1
+                else:
+                    os.rename(path, ch_path)
+                    break
+        else:
+            os.remove(path)
+            return True
+        return move(ch_path, new_path, app)
     else:
         return True
 
@@ -59,33 +83,14 @@ def sorting(app, base_dir, can_open, configs, save_folder, scrollable_frame):
                 k: v for k, v in configs.items()
                 if k not in ["folders", "last_folder", "start"]
             }
-            for j in val.values():
-                if ext in j:
-                    ans = [items for items, values in configs.items() if values == j]
-                    if move(os.path.join(base_dir, i), os.path.join(base_dir, ans[0].capitalize()), app):
-                        add_lbls(f"Moved {i} to {ans[0]}", scrollable_frame)
-                    else:
-                        continue
-    """
-        After the first loop, the unknown files will remain, now the loop will run to put them in Others
-    """
-    for i in os.listdir(base_dir):
-        path = os.path.join(base_dir, i)
-        if os.path.isfile(path):
-            if not is_safe(path):
-                continue
-            ext = os.path.splitext(i)[1].lower() if "." in i  else " "
-            val = {
-                k: v for k, v in configs.items()
-                if k not in ["folders", "last_folder", "start"]
-            }
-            moved = False
-            for j in val.values():
-                if ext in j:
-                    # move to category
-                    moved = True
-                    break
-            if not moved:
+            all_extensions = [l for k in val.values() for l in k]
+            if ext in all_extensions:
+                folder = [k for k, j in val.items() if ext in j][0].capitalize()
+                if move(os.path.join(base_dir, i), os.path.join(base_dir, folder), app):
+                    add_lbls(f"Moved {i} to {folder}", scrollable_frame)
+                else:
+                    continue
+            else: 
                 if move(os.path.join(base_dir, i), os.path.join(base_dir, "Others"), app):
                     add_lbls(f"Moved {i} to Others", scrollable_frame)
                 else:
@@ -105,19 +110,20 @@ def sorting(app, base_dir, can_open, configs, save_folder, scrollable_frame):
             os.startfile(base_dir)
 
 def is_safe(path):
-    if os.path.exists(path):
-        name = path.lower()
+    if not os.path.exists(path):
+        return False
+    name = path.lower()
 
-        # 1. Extension check
-        if name.endswith((".crdownload", ".part", ".tmp")):
-            return False
+    # 1. Extension check
+    if name.endswith((".crdownload", ".part", ".tmp")):
+        return False
 
-        # 2. Open check
-        try:
-            with open(path, "rb"):
-                pass
-        except:
-            return False
-        
-        # if nothing is false return true
-        return True
+    # 2. Open check
+    try:
+        with open(path, "rb"):
+            pass
+    except:
+        return False
+    
+    # if nothing is false return true
+    return True

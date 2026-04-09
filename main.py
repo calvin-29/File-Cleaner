@@ -97,14 +97,21 @@ btn_frame.pack(side="top", fill="x")
 btn2 = Button(btn_frame, text="❌", fg="white", bg="red", font="Consolas 6", command=clear)
 btn2.pack(side="right", padx=5, ipadx=3, ipady=3)
 
+logs_frame = Frame(app)
+top_frame = Frame(logs_frame)
+
 #  Now add the canvas below everything
-canvas = Canvas(app)
-canvas.pack(side="left", fill="both", expand=True, padx=10, pady=5)
+canvas = Canvas(top_frame)
+canvas.pack(side="left", fill="both", expand=True)
 
 #  scrollbar to scroll through events
-scrollbar = Scrollbar(canvas, orient="vertical", command=canvas.yview)
-scrollbar.pack(side="right", fill="y")
-canvas.configure(yscrollcommand=scrollbar.set)
+y_scrollbar = Scrollbar(top_frame, orient="vertical", command=canvas.yview)
+y_scrollbar.pack(side="right", fill="y")
+canvas.configure(yscrollcommand=y_scrollbar.set)
+
+x_scrollbar = Scrollbar(logs_frame, orient="horizontal", command=canvas.xview)
+x_scrollbar.pack(side="bottom", fill="x")
+canvas.configure(xscrollcommand=x_scrollbar.set)
 
 #  frame that events are stored
 scrollable_frame = Frame(canvas)
@@ -112,6 +119,9 @@ canvas.create_window((0, 0), window=scrollable_frame, anchor="center")
 
 # update frame when configured
 scrollable_frame.bind("<Configure>", update_scroll_region)
+
+top_frame.pack(expand=True, fill="both")
+logs_frame.pack(side="bottom", expand=True, fill="both", padx=10, pady=10)
 
 # Check startup configuration
 setup_startup(configs)
