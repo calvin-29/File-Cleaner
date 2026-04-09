@@ -118,3 +118,6 @@ def is_safe(path):
                 pass
         except:
             return False
+        
+        # if nothing is false return true
+        return True
